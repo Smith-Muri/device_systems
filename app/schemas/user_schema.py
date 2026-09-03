@@ -1,14 +1,18 @@
 from enum import Enum
+from typing import Optional
+
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 
 class UserRole(str, Enum):
+
     ADMIN = "admin"
     SUPPORT = "support"
     USER = "user"
 
 
 class UserBase(BaseModel):
+    
 
     name: str = Field(
         ...,
@@ -19,7 +23,7 @@ class UserBase(BaseModel):
     email: EmailStr = Field(
         ...,
         description="Correo electrónico del usuario. Debe tener un formato válido.",
-        examples=["smith.murillo@sena.edu.co"],
+        examples=["Smith.Murillo@sena.edu.co"],
     )
     role: UserRole = Field(
         ...,
@@ -34,11 +38,13 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
+    """Modelo de ENTRADA usado en POST /users."""
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "name": "Smith Murillo",
-                "email": "smith.murillo@sena.edu.co",
+                "email": "Smith.Murillo@sena.edu.co",
                 "role": "admin",
                 "is_active": True,
             }
@@ -46,7 +52,47 @@ class UserCreate(UserBase):
     )
 
 
+class UserUpdate(UserBase):
+
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "name": "Smith Murillo",
+                "email": "Smith.Murillo@sena.edu.co",
+                "role": "support",
+                "is_active": True,
+            }
+        }
+    )
+
+
+class UserPatch(BaseModel):
+
+
+    name: Optional[str] = Field(
+        default=None, min_length=3, description="Nuevo nombre (opcional)."
+    )
+    email: Optional[EmailStr] = Field(
+        default=None, description="Nuevo correo electrónico (opcional)."
+    )
+    role: Optional[UserRole] = Field(
+        default=None, description="Nuevo rol (opcional)."
+    )
+    is_active: Optional[bool] = Field(
+        default=None, description="Nuevo estado activo/inactivo (opcional)."
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"role": "support"}}
+    )
+
+
 class UserResponse(UserBase):
+    """
+    Modelo de SALIDA (response_model) usado para estandarizar y controlar
+    exactamente qué campos se devuelven al cliente en cada respuesta.
+    """
     id: int = Field(..., description="Identificador único del usuario.", examples=[1])
 
     model_config = ConfigDict(
@@ -54,7 +100,7 @@ class UserResponse(UserBase):
             "example": {
                 "id": 1,
                 "name": "Smith Murillo",
-                "email": "smith.murillo@sena.edu.co",
+                "email": "Smith.Murillo@sena.edu.co",
                 "role": "admin",
                 "is_active": True,
             }

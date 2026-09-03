@@ -1,47 +1,60 @@
-# device_systems
+# device_systems (v2.0)
 
-API REST desarrollada con **FastAPI** para la gestión del recurso **usuarios**.
+API REST desarrollada con **FastAPI** para la gestión del recurso **usuarios**,
+evolucionada con CRUD completo, manejo profesional de errores, documentación
+Swagger/OpenAPI enriquecida y **Dependency Injection**.
 
-Evidencia: `GA1-220501096-01-AA1-EV07 – Fundamentos de FastAPI: API REST para Gestión de Usuarios`
+Evidencia: `GA1-220501096-01-AA1-EV08 – FastAPI Intermedio: Evolución de device_systems con CRUD Completo, Manejo de Errores, Swagger/OpenAPI y Dependency Injection`
 Programa: Tecnólogo en Análisis y Desarrollo de Software (228118) – SENA
 
 ## Descripción de la aplicación
 
-`device_systems` es una API REST construida con FastAPI que permite administrar
-usuarios de un sistema, aplicando:
+Esta versión evoluciona la API construida en la evidencia EV07, agregando:
 
-- Validación de datos de entrada con **Pydantic v2**.
-- **Path Parameters** para consultar un usuario por su `id`.
-- **Query Parameters** para filtrar usuarios por `role` y `is_active`.
-- **Response Models** para estandarizar las respuestas de la API.
-- **Cabeceras HTTP personalizadas** (`X-App-Name`, `X-API-Version`) en cada respuesta.
-- Validación de negocio: no se permiten correos electrónicos duplicados.
+- **CRUD completo**: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`.
+- **Manejo profesional de errores** con `HTTPException` (usuario no encontrado,
+  correo duplicado, rol no permitido, PATCH sin datos, eliminación de usuario
+  inexistente).
+- **Códigos de estado HTTP correctos** para cada operación.
+- **Documentación automática enriquecida** con Swagger/OpenAPI (título,
+  descripción, versión, contacto y tags).
+- **Dependency Injection** con `Depends()` para reutilizar lógica común
+  (búsqueda de usuario, validación de correo duplicado, validación de PATCH
+  vacío).
+- **Arquitectura por capas**: rutas, esquemas, servicios, dependencias y datos
+  separados en módulos independientes.
 
-Los datos se almacenan en memoria (una lista), por lo que se reinician cada
-vez que se reinicia el servidor. El objetivo de la actividad es practicar la
-construcción de la API con FastAPI, no la persistencia en base de datos.
+## Tecnologías utilizadas
+
+- Python 3.12
+- FastAPI 0.141
+- Uvicorn (servidor ASGI)
+- Pydantic v2 (validación de datos)
 
 ## Estructura del proyecto
 
 ```
 device_systems/
 ├── app/
-│   ├── __init__.py
-│   ├── main.py
+│   ├── main.py                      # Configuración de la app y metadatos OpenAPI
+│   ├── routes/
+│   │   └── user_routes.py           # Endpoints del recurso "users"
 │   ├── schemas/
-│   │   ├── __init__.py
-│   │   └── user_schema.py
-│   └── routes/
-│       ├── __init__.py
-│       └── user_routes.py
+│   │   └── user_schema.py           # Modelos Pydantic (entrada y salida)
+│   ├── services/
+│   │   └── user_service.py          # Lógica de negocio (CRUD)
+│   ├── dependencies/
+│   │   └── user_dependencies.py     # Dependencias reutilizables (Depends())
+│   └── data/
+│       └── users_db.py              # "Base de datos" en memoria
 ├── requirements.txt
 └── README.md
 ```
 
 ## Instalación de dependencias
 
-1. Clonar o descomprimir el proyecto y ubicarse en la carpeta `device_systems`.
-2. Crear y activar un entorno virtual (recomendado):
+1. Descomprime el proyecto y ubícate en la carpeta `device_systems`.
+2. Crea y activa un entorno virtual:
 
    ```bash
    python -m venv venv
@@ -51,7 +64,7 @@ device_systems/
    source venv/bin/activate
    ```
 
-3. Instalar las dependencias:
+3. Instala las dependencias:
 
    ```bash
    pip install -r requirements.txt
@@ -59,80 +72,76 @@ device_systems/
 
 ## Ejecución del servidor
 
-Desde la carpeta raíz del proyecto (`device_systems`), ejecutar:
+Desde la carpeta raíz del proyecto (`device_systems`):
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-El servidor quedará disponible en:
+El servidor queda disponible en:
 
 - API: http://127.0.0.1:8000
-- Documentación interactiva (Swagger UI): http://127.0.0.1:8000/docs
-- Documentación alternativa (ReDoc): http://127.0.0.1:8000/redoc
+- Swagger UI: http://127.0.0.1:8000/docs
+- ReDoc: http://127.0.0.1:8000/redoc
 
 > El proyecto incluye 3 usuarios de ejemplo precargados en memoria (`id` 1, 2 y 3)
-> para poder probar los endpoints `GET` sin necesidad de crear datos primero.
+> para poder probar los `GET` sin crear datos primero. Al reiniciar el
+> servidor, los datos vuelven a su estado inicial (no hay persistencia real).
 
 ## Tabla de endpoints
 
-| Método | Endpoint             | Descripción                                              |
-|--------|-----------------------|-----------------------------------------------------------|
-| GET    | `/`                    | Endpoint de bienvenida / verificación del servicio        |
-| GET    | `/users`               | Lista todos los usuarios                                   |
-| GET    | `/users?role=admin`    | Filtra usuarios por rol (`admin`, `support`, `user`)       |
-| GET    | `/users?is_active=true`| Filtra usuarios por estado activo/inactivo                 |
-| GET    | `/users/{user_id}`     | Consulta un usuario específico por su ID (Path Parameter)  |
-| POST   | `/users`               | Registra un nuevo usuario                                   |
+| Operación             | Método | Endpoint             | Código éxito       |
+|------------------------|--------|------------------------|---------------------|
+| Listar usuarios         | GET    | `/users`                | 200 OK               |
+| Filtrar por rol         | GET    | `/users?role=admin`     | 200 OK               |
+| Filtrar por estado      | GET    | `/users?is_active=true` | 200 OK               |
+| Consultar por ID        | GET    | `/users/{user_id}`      | 200 OK               |
+| Crear usuario           | POST   | `/users`                | 201 Created          |
+| Actualizar completo     | PUT    | `/users/{user_id}`      | 200 OK               |
+| Actualizar parcial      | PATCH  | `/users/{user_id}`      | 200 OK               |
+| Eliminar usuario        | DELETE | `/users/{user_id}`      | 200 OK               |
 
 Todas las respuestas incluyen las cabeceras personalizadas:
 
 ```
 X-App-Name: device_systems
-X-API-Version: 1.0
+X-API-Version: 2.0
 ```
 
-## Modelo de usuario (Pydantic)
+## Códigos de error
 
-Campos:
+| Escenario                                    | Código                    |
+|-----------------------------------------------|----------------------------|
+| Usuario no encontrado (GET/PUT/PATCH/DELETE)   | `404 Not Found`             |
+| Correo electrónico duplicado (POST/PUT/PATCH)  | `400 Bad Request`           |
+| PATCH sin ningún campo enviado                 | `400 Bad Request`           |
+| Datos inválidos (validación Pydantic)          | `422 Unprocessable Entity`  |
 
-| Campo       | Tipo    | Validación                                        |
-|-------------|---------|----------------------------------------------------|
-| `id`        | int     | Generado automáticamente por el servidor            |
-| `name`      | str     | Obligatorio, mínimo 3 caracteres                     |
-| `email`     | EmailStr| Debe tener formato de correo válido                  |
-| `role`      | str     | Solo permite: `admin`, `support`, `user`             |
-| `is_active` | bool    | Valor booleano (`true` / `false`)                    |
-
-## Ejemplos de peticiones
-
-### GET /users
-
-```bash
-curl http://127.0.0.1:8000/users
-```
-
-Respuesta (200 OK):
+Ejemplo de respuesta de error:
 
 ```json
-[
-  {
-    "name": "Smith Murillo",
-    "email": "smith.murillo@sena.edu.co",
-    "role": "admin",
-    "is_active": true,
-    "id": 1
-  }
-]
+{
+  "detail": "Usuario no encontrado (id=999)"
+}
 ```
 
-### GET /users/{user_id}
+## Modelos de datos (Pydantic)
 
-```bash
-curl http://127.0.0.1:8000/users/1
-```
+| Modelo        | Uso                          | Campos obligatorios                          |
+|----------------|-------------------------------|-------------------------------------------------|
+| `UserCreate`   | POST /users                  | name, email, role (is_active opcional)          |
+| `UserUpdate`   | PUT /users/{id}               | name, email, role, is_active (todos)            |
+| `UserPatch`    | PATCH /users/{id}             | ninguno (todos opcionales)                      |
+| `UserResponse` | Respuesta de todos los endpoints | id, name, email, role, is_active            |
 
-Si el usuario no existe, responde `404 Not Found`.
+Validaciones:
+
+- `name`: obligatorio, mínimo 3 caracteres.
+- `email`: formato de correo válido (`EmailStr`).
+- `role`: solo permite `admin`, `support` o `user`.
+- `is_active`: valor booleano.
+
+## Ejemplos de peticiones y respuestas
 
 ### GET /users?role=admin
 
@@ -140,10 +149,10 @@ Si el usuario no existe, responde `404 Not Found`.
 curl "http://127.0.0.1:8000/users?role=admin"
 ```
 
-### GET /users?is_active=true
-
-```bash
-curl "http://127.0.0.1:8000/users?is_active=true"
+```json
+[
+  {"name": "Smith Murillo", "email": "Smith.Murillo@sena.edu.co", "role": "admin", "is_active": true, "id": 1}
+]
 ```
 
 ### POST /users
@@ -151,48 +160,75 @@ curl "http://127.0.0.1:8000/users?is_active=true"
 ```bash
 curl -X POST http://127.0.0.1:8000/users \
   -H "Content-Type: application/json" \
-  -d '{
-        "name": "Ana Torres",
-        "email": "ana.torres@sena.edu.co",
-        "role": "user",
-        "is_active": true
-      }'
+  -d '{"name":"Ana Torres","email":"ana.torres@sena.edu.co","role":"user","is_active":true}'
 ```
 
-Respuesta (`201 Created`):
+Respuesta `201 Created` con el usuario creado (incluye su `id`).
 
-```json
-{
-  "name": "Ana Torres",
-  "email": "ana.torres@sena.edu.co",
-  "role": "user",
-  "is_active": true,
-  "id": 4
-}
+### PUT /users/{user_id}
+
+```bash
+curl -X PUT http://127.0.0.1:8000/users/4 \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Ana Torres Actualizada","email":"ana.torres.nueva@sena.edu.co","role":"support","is_active":false}'
 ```
 
-Si el correo ya existe, responde `400 Bad Request`.
-Si algún campo no cumple las validaciones (por ejemplo `name` con menos de 3
-caracteres, o un `role` no permitido), responde `422 Unprocessable Entity`
-con el detalle del error.
+Reemplaza TODA la información del usuario. Responde `404` si el usuario no existe.
 
-## Capturas de Pureba de la API
+### PATCH /users/{user_id}
 
-![Captura de pantalla 2026-08-26 194027.png](Images/Captura%20de%20pantalla%202026-08-26%20194027.png)
-![Captura de pantalla 2026-08-26 194736.png](Images/Captura%20de%20pantalla%202026-08-26%20194736.png)
-![Captura de pantalla 2026-08-26 194832.png](Images/Captura%20de%20pantalla%202026-08-26%20194832.png)
-![Captura de pantalla 2026-08-26 194938.png](Images/Captura%20de%20pantalla%202026-08-26%20194938.png)
-![Captura de pantalla 2026-08-26 195050.png](Images/Captura%20de%20pantalla%202026-08-26%20195050.png)
-![Captura de pantalla 2026-08-26 195138.png](Images/Captura%20de%20pantalla%202026-08-26%20195138.png)
-![Captura de pantalla 2026-08-26 195309.png](Images/Captura%20de%20pantalla%202026-08-26%20195309.png)
+```bash
+curl -X PATCH http://127.0.0.1:8000/users/4 \
+  -H "Content-Type: application/json" \
+  -d '{"role":"admin"}'
+```
 
-## Reflexión sobre el uso de FastAPI para construir APIs REST
+Modifica solo el campo enviado. Responde `400` si el body viene vacío `{}`.
 
-FastAPI permite construir APIs REST de forma rápida y segura gracias a su
-integración nativa con Pydantic para la validación de datos, la generación
-automática de documentación interactiva (Swagger UI / ReDoc) y el uso de
-type hints de Python para definir contratos claros entre cliente y servidor.
-El uso de `response_model` permite controlar exactamente qué información se
-expone al cliente, y el sistema de dependencias e inyección de parámetros
-(Path, Query, Body) facilita la construcción de endpoints ordenados y
-fáciles de mantener.
+### DELETE /users/{user_id}
+
+```bash
+curl -X DELETE http://127.0.0.1:8000/users/4
+```
+
+Responde `200 OK` con un mensaje de confirmación, o `404` si el usuario no existe.
+
+## Explicación del uso de Dependency Injection (`Depends()`)
+
+El archivo `app/dependencies/user_dependencies.py` centraliza lógica que se
+repite en varios endpoints:
+
+- **`get_user_or_404`**: recibe el `user_id` de la ruta, busca el usuario y,
+  si no existe, lanza automáticamente un `HTTPException 404`. Se usa con
+  `Depends()` en `GET /users/{id}`, `PUT`, `PATCH` y `DELETE`, evitando
+  repetir el `if usuario is None: raise ...` en cada endpoint.
+- **`validate_email_not_duplicated`**: valida que un correo no esté
+  registrado por otro usuario. Se reutiliza en `POST`, `PUT` y `PATCH`.
+- **`validate_patch_has_data`**: valida que el `PATCH` no llegue vacío.
+
+Esto hace que las funciones de las rutas (`user_routes.py`) queden cortas,
+legibles y enfocadas solo en orquestar la petición, mientras la validación y
+la lógica de negocio viven en capas separadas (`dependencies` y `services`).
+
+## Explicación del manejo de errores implementado
+
+Todos los errores se manejan con `HTTPException` de FastAPI, que permite
+definir el código de estado HTTP y un mensaje claro en el campo `detail`:
+
+- **404 Not Found**: cuando se busca, actualiza o elimina un usuario que no
+  existe en la base de datos en memoria.
+- **400 Bad Request**: cuando se intenta crear/actualizar un usuario con un
+  correo ya registrado, o cuando se envía un `PATCH` sin ningún campo.
+- **422 Unprocessable Entity**: generado automáticamente por FastAPI/Pydantic
+  cuando los datos de entrada no cumplen las validaciones del esquema (por
+  ejemplo, un `role` no permitido o un `email` con formato inválido).
+
+## Capturas de Swagger UI y ReDoc
+
+> Espacio reservado para las capturas de pantalla de Swagger UI (`/docs`) y
+> ReDoc (`/redoc`), y para las evidencias de pruebas de cada endpoint y de
+> los errores controlados (a insertar según la guía de pruebas en Postman).
+
+## Reflexión final sobre la evolución del proyecto
+
+**Cada error es una oportunidad para entender mejor el código y seguir avanzando**
