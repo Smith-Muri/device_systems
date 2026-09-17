@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
@@ -48,8 +49,10 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: int = Field(..., description="Identificador único del usuario.", examples=[1])
+    created_at: datetime
 
     model_config = ConfigDict(
+        from_attributes=True,
         json_schema_extra={
             "example": {
                 "id": 1,
@@ -57,6 +60,7 @@ class UserResponse(UserBase):
                 "email": "smith.murillo@sena.edu.co",
                 "role": "admin",
                 "is_active": True,
+                "created_at": "2026-09-16T12:00:00",
             }
         }
     )
