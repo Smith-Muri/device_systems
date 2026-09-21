@@ -44,4 +44,4 @@ def validate_patch_has_data(patch_data: UserPatch) -> UserPatch:
 
 def get_api_settings() -> dict:
  
-    return {"app_name": "device_systems", "api_version": "3.0.0"}
+    return {"app_name": "device_systems", "api_version": "4.0.0"}
