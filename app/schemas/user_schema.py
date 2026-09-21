@@ -47,6 +47,17 @@ class UserCreate(UserBase):
     )
 
 
+class UserUpdate(UserBase):
+    pass
+
+
+class UserPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=3)
+    email: EmailStr | None = None
+    role: UserRole | None = None
+    is_active: bool | None = None
+
+
 class UserResponse(UserBase):
     id: int = Field(..., description="Identificador único del usuario.", examples=[1])
     created_at: datetime
