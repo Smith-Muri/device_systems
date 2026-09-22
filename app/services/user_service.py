@@ -1,10 +1,12 @@
 """Capa de servicios para la persistencia del recurso "usuarios"."""
 
+import secrets
 from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.auth.security import get_password_hash
 from app.models.user_model import User
 from app.schemas.user_schema import UserCreate, UserPatch, UserUpdate, UserRole
 
@@ -52,6 +54,7 @@ def create_user(db: Session, user_data: UserCreate) -> User:
     new_user = User(
         name=user_data.name,
         email=str(user_data.email),
+        hashed_password=get_password_hash(secrets.token_urlsafe(32)),
         role=user_data.role.value,
         is_active=user_data.is_active,
     )

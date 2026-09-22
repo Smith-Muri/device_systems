@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.dependencies.database_dependency import get_db
+from app.dependencies.auth_dependency import get_current_active_user, require_admin_or_support
 from app.dependencies.loan_dependencies import get_loan_or_404
 from app.dependencies.user_dependencies import get_user_or_404
 from app.schemas.loan_schema import LoanCreate, LoanDetailResponse, LoanResponse
 from app.services import loan_service
+from app.rate_limit import limiter
 
 
 router = APIRouter(prefix="/loans", tags=["Loans"])
@@ -24,7 +26,7 @@ def list_loans(response: Response, db: Session = Depends(get_db), status_filter:
 
 
 @router.get("/details", response_model=list[LoanDetailResponse], summary="Consultar detalle de préstamos", description="Lista préstamos con usuario y dispositivo anidados.", response_description="Listado detallado de préstamos.")
-def list_loan_details(response: Response, db: Session = Depends(get_db)):
+def list_loan_details(response: Response, current_user=Depends(require_admin_or_support), db: Session = Depends(get_db)):
     _set_custom_headers(response)
     return loan_service.get_loan_details(db)
 
@@ -36,13 +38,14 @@ def get_loan(response: Response, loan=Depends(get_loan_or_404)):
 
 
 @router.post("", response_model=LoanResponse, status_code=status.HTTP_201_CREATED, summary="Crear un préstamo", description="Presta un dispositivo disponible a un usuario existente.", response_description="Préstamo creado.")
-def create_loan(response: Response, loan_data: LoanCreate, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def create_loan(request: Request, response: Response, loan_data: LoanCreate, current_user=Depends(get_current_active_user), db: Session = Depends(get_db)):
     _set_custom_headers(response)
     return loan_service.create_loan(db, loan_data)
 
 
 @router.patch("/{loan_id}/return", response_model=LoanResponse, summary="Devolver un préstamo", description="Marca el préstamo como devuelto y libera el dispositivo.", response_description="Préstamo devuelto.")
-def return_loan(response: Response, loan=Depends(get_loan_or_404), db: Session = Depends(get_db)):
+def return_loan(response: Response, loan=Depends(get_loan_or_404), current_user=Depends(require_admin_or_support), db: Session = Depends(get_db)):
     _set_custom_headers(response)
     return loan_service.return_loan(db, loan)
 

@@ -1,9 +1,10 @@
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.dependencies.database_dependency import get_db
+from app.dependencies.auth_dependency import get_current_active_user
 from app.dependencies.user_dependencies import (
     get_user_or_404,
     validate_email_not_duplicated,
@@ -17,6 +18,7 @@ from app.schemas.user_schema import (
     UserUpdate,
 )
 from app.services import user_service
+from app.rate_limit import limiter
 
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -28,13 +30,14 @@ def _set_custom_headers(response: Response) -> None:
 
 
 @router.get("", response_model=list[UserResponse], status_code=status.HTTP_200_OK, summary="Listar usuarios", description="Lista usuarios con filtros y ordenamiento opcionales.", response_description="Listado de usuarios.")
-def get_users(response: Response, db: Session = Depends(get_db), role: Optional[UserRole] = Query(default=None), is_active: Optional[bool] = Query(default=None), order_by: Literal["id", "name", "created_at"] = Query(default="id")):
+@limiter.limit("30/minute")
+def get_users(request: Request, response: Response, current_user=Depends(get_current_active_user), db: Session = Depends(get_db), role: Optional[UserRole] = Query(default=None), is_active: Optional[bool] = Query(default=None), order_by: Literal["id", "name", "created_at"] = Query(default="id")):
     _set_custom_headers(response)
     return user_service.list_users(db, role=role, is_active=is_active, order_by=order_by)
 
 
 @router.get("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK, summary="Consultar un usuario", description="Busca un usuario por su identificador.", response_description="Usuario encontrado.")
-def get_user_by_id(response: Response, user=Depends(get_user_or_404)):
+def get_user_by_id(response: Response, current_user=Depends(get_current_active_user), user=Depends(get_user_or_404)):
     _set_custom_headers(response)
     return user
 
