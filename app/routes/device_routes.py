@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.dependencies.database_dependency import get_db
+from app.dependencies.auth_dependency import require_admin, require_admin_or_support
 from app.dependencies.device_dependencies import get_device_or_404
 from app.schemas.device_schema import DeviceCreate, DevicePatch, DeviceResponse, DeviceUpdate
 from app.schemas.loan_schema import LoanResponse
@@ -29,7 +30,7 @@ def get_device(response: Response, device=Depends(get_device_or_404)):
 
 
 @router.post("", response_model=DeviceResponse, status_code=status.HTTP_201_CREATED, summary="Registrar un dispositivo", description="Crea un dispositivo con número serial único.", response_description="Dispositivo creado.")
-def create_device(response: Response, device_data: DeviceCreate, db: Session = Depends(get_db)):
+def create_device(response: Response, device_data: DeviceCreate, current_user=Depends(require_admin_or_support), db: Session = Depends(get_db)):
     _set_custom_headers(response)
     if device_service.serial_number_exists(db, device_data.serial_number):
         from fastapi import HTTPException
@@ -38,7 +39,7 @@ def create_device(response: Response, device_data: DeviceCreate, db: Session = D
 
 
 @router.put("/{device_id}", response_model=DeviceResponse, summary="Actualizar completamente un dispositivo", description="Reemplaza todos los campos del dispositivo.", response_description="Dispositivo actualizado.")
-def update_device(response: Response, device_data: DeviceUpdate, device=Depends(get_device_or_404), db: Session = Depends(get_db)):
+def update_device(response: Response, device_data: DeviceUpdate, current_user=Depends(require_admin_or_support), device=Depends(get_device_or_404), db: Session = Depends(get_db)):
     _set_custom_headers(response)
     if device_service.serial_number_exists(db, device_data.serial_number, device.id):
         from fastapi import HTTPException
@@ -59,7 +60,7 @@ def patch_device(response: Response, patch_data: DevicePatch, device=Depends(get
 
 
 @router.delete("/{device_id}", summary="Eliminar un dispositivo", description="Elimina un dispositivo existente.", response_description="Confirmación de eliminación.")
-def delete_device(response: Response, device=Depends(get_device_or_404), db: Session = Depends(get_db)):
+def delete_device(response: Response, current_user=Depends(require_admin), device=Depends(get_device_or_404), db: Session = Depends(get_db)):
     _set_custom_headers(response)
     device_service.delete_device(db, device)
     return {"detail": f"Dispositivo con id={device.id} eliminado correctamente."}

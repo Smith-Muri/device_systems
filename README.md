@@ -1,8 +1,8 @@
-# device_systems (v4.0)
+# device_systems (v5.0)
 
 API REST con FastAPI para gestionar usuarios, dispositivos y prestamos. Usa
-SQLAlchemy con SQLite, Dependency Injection, validacion Pydantic y migraciones
-Alembic.
+SQLAlchemy con SQLite, Dependency Injection, validacion Pydantic v2, migraciones
+Alembic y autenticacion OAuth2 con JWT.
 
 ## Estructura y modelos
 
@@ -25,6 +25,15 @@ python -m venv venv
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
+
+Antes de arrancar, crea tu configuracion local a partir de `.env.example`:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Configura `SECRET_KEY` con una clave larga y aleatoria. No subas `.env` al
+repositorio. La API usa `HS256` y los tokens expiran por defecto en 30 minutos.
 
 La API queda disponible en `http://127.0.0.1:8000/docs`.
 
@@ -61,6 +70,62 @@ una nueva revision y aplicala con `upgrade head`; no dependas solamente de
 
 Todos los endpoints de recursos agregan `X-App-Name: device_systems` y
 `X-API-Version: 4.0`.
+
+## Autenticacion y autorizacion
+
+Registra un usuario con `POST /auth/register` usando una contraseña de al menos
+8 caracteres, con mayuscula, minuscula y numero, sin espacios. Para iniciar
+sesion usa `POST /auth/login` con formulario OAuth2: `username` es el correo y
+`password` es la contraseña. Copia `access_token` en el boton **Authorize** de
+Swagger (`/docs`) como `Bearer <token>`. `GET /auth/me` devuelve el usuario
+autenticado. Las contraseñas se guardan exclusivamente como hashes bcrypt.
+
+| Metodo | Ruta | Permiso |
+|---|---|---|
+| GET | `/users`, `/users/{user_id}` | Usuario autenticado y activo |
+| POST/PUT | `/devices`, `/devices/{device_id}` | `admin` o `support` |
+| DELETE | `/devices/{device_id}` | `admin` |
+| POST | `/loans` | Usuario autenticado y activo |
+| PATCH | `/loans/{loan_id}/return` | `admin` o `support` |
+| GET | `/loans/details` | `admin` o `support` |
+
+El resto del CRUD conserva su comportamiento existente; los endpoints de
+registro, login y los endpoints publicos no requieren token.
+
+## Middleware y CORS
+
+Cada respuesta incluye `X-App-Name` para identificar el servicio,
+`X-Process-Time` para medir su tiempo de procesamiento y `X-Request-ID` para
+correlacionar logs, trazabilidad y debugging. El cliente puede enviar su propio
+`X-Request-ID`; si no lo hace, la API genera uno.
+
+CORS permite los frontends locales `http://localhost:5173` y
+`http://localhost:3000`. No uses `allow_origins=["*"]` junto con
+`allow_credentials=True` en producción: un origen malicioso podría ejecutar
+peticiones autenticadas desde el navegador y facilitar CSRF o el robo de una
+sesion. En producción debe configurarse una lista explicita de origenes
+confiables y protegerse tambien el ciclo de vida de cookies y tokens.
+
+## Rate limiting
+
+| Metodo | Ruta | Limite |
+|---|---|---|
+| POST | `/auth/login` | 5 por minuto |
+| POST | `/auth/register` | 3 por minuto |
+| GET | `/users` | 30 por minuto |
+| POST | `/loans` | 10 por minuto |
+
+La limitacion usa la direccion remota como clave y responde con `429` cuando
+se supera el limite.
+
+## Reflexion sobre seguridad
+
+Una API REST segura debe proteger tanto la identidad como la operacion: JWT y
+hashing evitan enviar o almacenar contraseñas en texto plano, los roles reducen
+el alcance de cada usuario, CORS limita origenes confiables, el rate limiting
+reduce abuso y el middleware permite investigar incidentes. Estas medidas son
+complementarias y deben mantenerse junto con validaciones, secretos externos,
+HTTPS, rotacion de claves y monitorizacion en produccion.
 
 ## Ejemplo de `GET /loans/details`
 
@@ -112,15 +177,18 @@ respuestas utiles sin mezclar la persistencia con los schemas HTTP.
 
 ### 21 de septiembre de 2026
 
-![Evidencia 1](Images/Captura%20de%20pantalla%202026-09-21%20181835.png)
-![Evidencia 2](Images/Captura%20de%20pantalla%202026-09-21%20182515.png)
-![Evidencia 3](Images/Captura%20de%20pantalla%202026-09-21%20182537.png)
-![Evidencia 4](Images/Captura%20de%20pantalla%202026-09-21%20182700.png)
-![Evidencia 5](Images/Captura%20de%20pantalla%202026-09-21%20182841.png)
-![Evidencia 6](Images/Captura%20de%20pantalla%202026-09-21%20182914.png)
-![Evidencia 7](Images/Captura%20de%20pantalla%202026-09-21%20182933.png)
-![Evidencia 8](Images/Captura%20de%20pantalla%202026-09-21%20182954.png)
-![Evidencia 9](Images/Captura%20de%20pantalla%202026-09-21%20183103.png)
-![Evidencia 10](Images/Captura%20de%20pantalla%202026-09-21%20183144.png)
-![Evidencia 11](Images/Captura%20de%20pantalla%202026-09-21%20183201.png)
-![Evidencia 12](Images/Captura%20de%20pantalla%202026-09-21%20183224.png)
+![Evidencia 1](Images/Captura%20de%20pantalla%202026-09-21%20185428.png)
+![Evidencia 2](Images/Captura%20de%20pantalla%202026-09-21%20185450.png)
+![Evidencia 3](Images/Captura%20de%20pantalla%202026-09-21%20185519.png)
+![Evidencia 4](Images/Captura%20de%20pantalla%202026-09-21%20185823.png)
+![Evidencia 5](Images/Captura%20de%20pantalla%202026-09-21%20185840.png)
+![Evidencia 6](Images/Captura%20de%20pantalla%202026-09-21%20190604.png)
+![Evidencia 7](Images/Captura%20de%20pantalla%202026-09-21%20190642.png)
+![Evidencia 8](Images/Captura%20de%20pantalla%202026-09-21%20190950.png)
+![Evidencia 9](Images/Captura%20de%20pantalla%202026-09-21%20191011.png)
+![Evidencia 10](Images/Captura%20de%20pantalla%202026-09-21%20191028.png)
+![Evidencia 11](Images/Captura%20de%20pantalla%202026-09-21%20191438.png)
+![Evidencia 12](Images/Captura%20de%20pantalla%202026-09-21%20191500.png)
+![Evidencia 13](Images/Captura%20de%20pantalla%202026-09-21%20191625.png)
+![Evidencia 14](Images/Captura%20de%20pantalla%202026-09-21%20191740.png)
+![Evidencia 15](Images/Captura%20de%20pantalla%202026-09-21%20192043.png)
